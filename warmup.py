@@ -29,6 +29,8 @@ analysis.
 
 """
 
+import numpy as np
+
 class LennardJones:
     r"""Lennard-Jones pair potential.
 
@@ -89,7 +91,9 @@ class LennardJones:
 
     """
     def __init__(self, epsilon, sigma, rcut):
-        pass
+        self.epsilon = epsilon
+        self.sigma = sigma
+        self.rcut = rcut
 
     def energy(self, r):
         r"""Evaluate potential energy.
@@ -103,7 +107,15 @@ class LennardJones:
             If ``r`` is 0, the energy is :py:obj:`numpy.inf`.
 
         """
-        pass
+        r = np.atleast_1d(r)
+        u = np.zeros_like(r)
+        val = np.isclose(r, 0)
+        u[val] = np.inf
+        val = ~val & (r<=self.rcut)
+        u[val] = 4*self.epsilon*((self.sigma/r[val])**12 - (self.sigma/r[val])**6)
+        if len(r) == 1:
+            u = u[0]
+        return u
 
     def force(self, r):
         r"""Evaluate force.
@@ -117,8 +129,16 @@ class LennardJones:
             If ``r`` is 0, the force is :py:obj:`numpy.inf`.
 
         """
-        pass
-
+        r = np.atleast_1d(r)
+        f = np.zeros_like(r)
+        val = np.isclose(r, 0)
+        f[val] = np.inf
+        val = ~val & (r<=self.rcut)
+        f[val] = 24*self.epsilon*((2*self.sigma**12)/(r[val]**13) - (self.sigma**6)/(r[val]**7))
+        if len(r) == 1:
+            f = f[0]
+        return f
+    
 class RadialDistribution:
     r"""Radial distribution function calculator.
 

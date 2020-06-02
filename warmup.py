@@ -245,7 +245,19 @@ class RadialDistribution:
 
     """
     def __init__(self, rmax, dr, rmin=0.0):
-        pass
+        self.rmax = rmax
+        self.rmin = rmin
+
+        r_range = self.rmax - self.rmin
+        num_bins = np.round(r_range/dr)
+        self.dr = r_range/num_bins
+
+        self.edges = np.arange(rmin, rmax + self.dr/2, self.dr)
+        self.centers = 0.5*(self.edges[:-1] + self.edges[1:])
+
+        self._deltaV = (4/3)*np.pi*(self.edges[1:]**3 - self.edges[:-1]**3)
+
+        self.reset()
 
     def accumulate(self, L, points):
         r"""Accumulate a new entry in the average.
@@ -260,7 +272,22 @@ class RadialDistribution:
         The sample is accumulated into the radial distribution average.
 
         """
-        pass
+        if self.rmax >= L/2:
+            raise ValueError('rmax >= L/2')
+        temp_rdf = np.zeros_like(self._rdf)
+        points = np.atleast_2d(points)
+        for i in range(points.shape[0] - 1):
+            for j in range(i+1, points.shape[0]):
+                dist_vect = points[j] - points[i]
+                dist_vect -= L*np.round(dist_vect/L) 
+                dist_mag = np.linalg.norm(dist_vect)
+                if self.rmin <= dist_mag < self.rmax:
+                    bin_coord = int(np.floor((dist_mag - self.rmin)/self.dr))
+                    temp_rdf[bin_coord] += 2
+        rho = points.shape[0]/L**3
+        temp_rdf /= (rho*self._deltaV*points.shape[0])
+        self._rdf += temp_rdf
+        self._samples += 1
 
     def reset(self):
         r"""Reset the accumulator.
@@ -268,9 +295,13 @@ class RadialDistribution:
         The sample accumulator is reset to zeros.
 
         """
-        pass
+        self._rdf = np.zeros_like(self.centers)
+        self._samples = 0
 
     @property
     def rdf(self):
         r""":py:obj:`numpy.ndarray`: Average radial distribution function."""
-        pass
+        if self._samples == 0:
+            return self._rdf
+        else:
+            return self._rdf/self._samples
